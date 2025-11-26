@@ -1,0 +1,26 @@
+#services:
+#  sql:
+#    image: mcr.microsoft.com/mssql/server:2022-latest
+#    environment:
+#      ACCEPT_EULA: "Y"
+#      MSSQL_SA_PASSWORD: "Password@1"
+#    platform: "linux/amd64"
+#    ports:
+#      - "1433:1433"
+version: '3.8'
+
+services:
+  sql:
+    image: mcr.microsoft.com/azure-sql-edge:latest
+    container_name: skinet-sql
+    environment:
+      ACCEPT_EULA: "1"
+      MSSQL_SA_PASSWORD: "Password@1"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqldata:/var/opt/mssql
+    restart: unless-stopped
+
+volumes:
+  sqldata:
