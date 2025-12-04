@@ -1,5 +1,5 @@
 using Core.Entities;
-using Infrastructure.Data;
+using Core.Interfaces;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 
@@ -7,37 +7,42 @@ namespace API.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
-public class ProductsController : ControllerBase
+public class ProductsController(IProductRepository repository) : ControllerBase
 {
-    StoreContext _context;
-    public ProductsController(StoreContext context)
-    {
-        _context =  context;
-    }
-    
+    // ProductRepository _repository = repository; Class içinde constructor inject olduğu için artık gerek yok
+
     [HttpGet]
-    public async Task<ActionResult<IEnumerable<Product>>> GetProducts()
+    public async Task<ActionResult<IEnumerable<Product>>> GetProducts(string? brand, string? type,string? sort)
     {
-       List<Product> products = await _context.Products.ToListAsync();
-       return products;
+        return Ok(await repository.GetProductsAsync(brand, type, sort));
     }
 
     [HttpGet("{id:int}")] // api/products/2
     public async Task<ActionResult<Product>> GetProduct(int id)
     {
-        var product = await _context.Products.FindAsync(id);
+        var product = await repository.GetProductByIdAsync(id);
 
         if (product != null) return product;
         return NotFound();
     }
+    //
+    // [HttpGet("byname/{name}")] // api/products/byname/telefon
+    // public async Task<ActionResult<Product>> GetProduct(string name)
+    // {
+    //     var product = await repository.GetProductByNameAsync(name);
+    //
+    //     if (product != null) return product;
+    //     return NotFound();
+    // }
 
     [HttpPost]
     public async Task<ActionResult<Product>> CreateProduct([FromBody] Product product)
     {
         if (!ModelState.IsValid) return BadRequest(ModelState);
-        _context.Products.Add(product);
-        await _context.SaveChangesAsync();
-        return product;
+        repository.AddProduct(product);
+        if(await repository.SaveChangesAsync())
+            return CreatedAtAction("GetProduct", new { id = product.Id }, product);
+        return BadRequest("Problem adding product");
     }
     // Aslında FromRoute ya da FromBody yazmaya gerek yok. Çünkü Dotnet primitive dataları otomatik olarak route'da
     //ya da query string de arar. Nesneleri ise body'de arar. Ancak belirtmek temiz koda daha uygun.
@@ -46,27 +51,44 @@ public class ProductsController : ControllerBase
     {
         if (id != product.Id || !ProductExists(id)) return BadRequest("Could not update product");
         
-            _context.Entry(product).State = EntityState.Modified;
-            await _context.SaveChangesAsync();
+            repository.UpdateProduct(product);
+            if (await repository.SaveChangesAsync())
+            {
+                return NoContent();
+            }
             
-        return Ok();
+        return BadRequest("Problem updating product");
     }
 
     [HttpDelete("{id:int}")]
     public async Task<ActionResult> DeleteProduct(int id)
     {
-        var product = await _context.Products.FindAsync(id);
+        var product = await repository.GetProductByIdAsync(id);
         if (product != null)
         {
-            _context.Products.Remove(product);
-            await _context.SaveChangesAsync();
-            return NoContent();
+            repository.DeleteProduct(product);
+            if (await repository.SaveChangesAsync())
+            {
+                return NoContent();
+            }
+            return BadRequest("Problem deleting product");
         }
-        return NotFound();
+        return NotFound("Product not found");
     }
 
+    [HttpGet("brands")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetBrands()
+    {
+        return Ok(await repository.GetBrandsAsync());
+    }
+    [HttpGet("types")]
+    public async Task<ActionResult<IReadOnlyList<string>>> GetTypes()
+    {
+        return Ok(await repository.GetTypesAsync());
+    }
+    
     private bool ProductExists(int id)
     {
-        return _context.Products.Any(e => e.Id == id);
+        return repository.ProductExists(id);
     }
 }
