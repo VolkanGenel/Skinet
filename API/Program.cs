@@ -19,6 +19,7 @@ builder.Services.AddDbContext<StoreContext>(opt =>
 // Add Transient tek kullanımlıktır. Örn: EmailSender, küçük helper servisler. Her kullanımda yeni bir obje oluşur.
 // AddSingleton Servis ayağa kalkınca bir adet oluşturur. Bütün uygulamada o nesneyi kullanır. Uygulama kapanınca yok olur. Config, Cache, Logger gibi global şeyler.
 builder.Services.AddScoped<IProductRepository, ProductRepository>();
+builder.Services.AddScoped(typeof(IGenericRepository<>), typeof(GenericRepository<>));
 // Controller artık IProductRepository’nin sunduğu metotlardan fazlasını göremez. Yani ProductRepository’ye özel metotları göremez.
 
 // BU SATIRIN ÜSTÜNDEKİ HER SATIR SERVİS OLARAK GEÇER
